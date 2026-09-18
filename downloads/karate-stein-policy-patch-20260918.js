@@ -20,16 +20,13 @@
     }
 
     const doc = new DOMParser().parseFromString(source, 'text/html');
+    const editorForm = doc.querySelector('form#template');
     const textarea = doc.querySelector('textarea#newcontent, textarea[name="newcontent"]');
-    if (!textarea) {
-      throw new Error('Quelltextfeld wurde nicht gefunden.');
-    }
+    const nonceInput = editorForm && editorForm.querySelector('input[name="nonce"]');
 
-    const configMatch = source.match(/var\s+file_editor\s*=\s*(\{[\s\S]*?\});/);
-    if (!configMatch) {
-      throw new Error('Sicherheitskonfiguration des Editors wurde nicht gefunden.');
+    if (!editorForm || !textarea || !nonceInput || !nonceInput.value) {
+      throw new Error('Editorformular oder Sicherheitsnachweis wurde nicht gefunden.');
     }
-    const config = JSON.parse(configMatch[1]);
 
     let code = textarea.value;
     const marker = "add_action('admin_post_ks_member_register', 'ks_theme_multigroup_prepare_registration', 0);";
@@ -83,18 +80,18 @@ add_action('admin_post_ks_member_apply', 'ks_theme_multigroup_prepare_existing_a
     );
 
     const form = new URLSearchParams({
-      action: 'edit-theme-plugin-file',
+      nonce: nonceInput.value,
+      action: 'update',
       file: 'inc/member-registration-multigroup.php',
       theme: 'karate-stein',
-      plugin: '',
-      nonce: config.nonce,
       newcontent: code,
       'docs-list': ''
     });
 
-    const save = await fetch(config.ajaxURL || '/wp-admin/admin-ajax.php', {
+    const save = await fetch('/wp-admin/theme-editor.php', {
       method: 'POST',
       credentials: 'same-origin',
+      redirect: 'follow',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
       },
@@ -102,15 +99,14 @@ add_action('admin_post_ks_member_apply', 'ks_theme_multigroup_prepare_existing_a
     });
 
     const resultText = await save.text();
-    let result = null;
-    try {
-      result = JSON.parse(resultText);
-    } catch (error) {
-      // The raw response is surfaced below.
-    }
-
-    if (!save.ok || !result || !result.success) {
-      throw new Error('Speichern fehlgeschlagen: ' + resultText.slice(0, 1000));
+    if (
+      !save.ok
+      || (!save.url.includes('a=1') && !resultText.includes('File edited successfully'))
+    ) {
+      const errorDoc = new DOMParser().parseFromString(resultText, 'text/html');
+      const errorNode = errorDoc.querySelector('#message, .notice-error, .error');
+      const detail = errorNode ? errorNode.textContent.trim() : resultText.slice(0, 700);
+      throw new Error('Speichern fehlgeschlagen: ' + detail);
     }
 
     setOutput(
