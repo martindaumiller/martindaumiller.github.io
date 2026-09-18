@@ -11,7 +11,8 @@
   };
 
   try {
-    const editorUrl = '/wp-admin/theme-editor.php?file=inc%2Fmember-registration-multigroup.php&theme=karate-stein';
+    const theme = 'karate-stein-wpvibe-draft';
+    const editorUrl = '/wp-admin/theme-editor.php?file=inc%2Fmember-registration-multigroup.php&theme=' + encodeURIComponent(theme);
     const response = await fetch(editorUrl, { credentials: 'same-origin' });
     const source = await response.text();
 
@@ -83,7 +84,7 @@ add_action('admin_post_ks_member_apply', 'ks_theme_multigroup_prepare_existing_a
       nonce: nonceInput.value,
       action: 'update',
       file: 'inc/member-registration-multigroup.php',
-      theme: 'karate-stein',
+      theme,
       newcontent: code,
       'docs-list': ''
     });
