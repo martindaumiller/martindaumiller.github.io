@@ -80,6 +80,9 @@ add_action('admin_post_ks_member_apply', 'ks_theme_multigroup_prepare_existing_a
       'ks_multigroup_admission_policy_v2'
     );
 
+    const draftGuard = "    if ((string) get_option('wpvibe_draft_theme') === get_stylesheet()) {\n        return;\n    }\n";
+    code = code.replace(draftGuard, '');
+
     const form = new URLSearchParams({
       nonce: nonceInput.value,
       action: 'update',
